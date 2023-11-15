@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+
 #define SERVER_PORT 50001
 #define SERVER_IP "127.0.0.1"
 
@@ -58,6 +59,7 @@ int main(int argc, char *argv[]){
     char buf[64];
     int n;
     n = read(sockfd, buf, sizeof(buf) - 1);
+    // n = recv(sockfd, buf, sizeof(buf), 0);
 
     if(n > 0){
         buf[n] = '\0';

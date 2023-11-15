@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <errno.h>
 
 #define SERVER_PORT 50001
 #define SERVER_IP "127.0.0.1"
@@ -18,11 +19,13 @@ int main()
     //create a socket(domain, type, protocol)
     //domain:AF_INET/AF_INET6/AF_UNIX本地协议，使用在unix和linux系统上，一般客户端和服务器在同一台机器上是用
     //type:SOCK_STREAM(TCP)/SOCK_DGRAM(UDP)/SOCK_SEQPACKET(双线路可靠连接)/SOCK_RAW(单一网络访问，如ICMP/ping)/SOCK_RDM
-    //protocol:default is 0
+    //protocol:default is 0，表示跟type一致，也可以显式写出：IPPROTO_TCP/IPPROTO_UDP
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
     //if failed
     if(server_sock < 0){
         perror("Socket creation failed");
+        //stderr是标准错误流，类似stdout，strerror可以将errno（错误号）转化为错误信息字符串
+        fprintf(stderr, "create socket error, reason: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
@@ -44,6 +47,7 @@ int main()
         struct sockaddr_in local_addr;
         socklen_t addr_len = sizeof(local_addr);
         if (getsockname(server_sock, (struct sockaddr*)&local_addr, &addr_len) == -1) {
+            //perror将自定义错误信息输出stderr
             perror("Getsockname failed");
             close(server_sock);
             return 1;
@@ -71,7 +75,7 @@ int main()
         int client_sock;
 
         //accept all the connection,failed return -1,没有client连接的话，一直处于主阻塞状态
-        //第三个参数传入的需要是提供缓冲区大小（sockaddr_in大小），传处后是客户端实际的大小
+        //第三个参数传入socklen_t类型指针，需要能提供缓冲区大小（sockaddr_in大小），传处后是客户端实际的大小
         client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &client_addr_len);
 
         if(client_sock < 0){
@@ -96,6 +100,10 @@ int main()
         buf[len] = '\0';
         std::cout << "receive[" << len << "]: " << buf << std::endl;
 
+        //使用recv接受数据，第四个参数用于控制接收行为，如是否阻塞
+        //success return length, client close return 0, fail return -1
+        //len = recv(client_sock, buf, sizeof(buf), 0);
+
         //process the data
         for(int i = 0; i < len; i++){
             buf[i] = toupper(buf[i]);
@@ -103,6 +111,9 @@ int main()
 
         //response to the client
         len = write(client_sock, buf, len);
+
+        //使用send发送数据
+        // len = send(client_sock, buf, strlen(buf), 0);
         std::cout << "write finished. len:" << len << std::endl;
 
         //close socket
